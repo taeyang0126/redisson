@@ -112,6 +112,7 @@
             <groupId>com.github.hazendaz.jmockit</groupId>
             <artifactId>jmockit</artifactId>
             <scope>test</scope>
+            <version>1.52.0</version>
         </dependency>
         <dependency>
             <groupId>org.jooq</groupId>
