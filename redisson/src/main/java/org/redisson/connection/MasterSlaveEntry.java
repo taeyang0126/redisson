@@ -157,6 +157,7 @@ public class MasterSlaveEntry {
     private CompletableFuture<RedisClient> setupMasterEntry(RedisClient client) {
         CompletableFuture<InetSocketAddress> addrFuture = client.resolveAddr();
         return addrFuture.thenCompose(res -> {
+            // 构建单个client下的连接组信息
             ClientConnectionsEntry entry = new ClientConnectionsEntry(
                     client,
                     config.getMasterConnectionMinimumIdleSize(),

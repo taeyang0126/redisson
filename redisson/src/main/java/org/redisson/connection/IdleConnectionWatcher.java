@@ -51,7 +51,9 @@ public class IdleConnectionWatcher {
             super();
             this.minimumAmount = minimumAmount;
             this.maximumAmount = maximumAmount;
+            // 空闲连接
             this.connections = holder.getFreeConnections();
+            // 空闲连接的Semaphore
             this.freeConnectionsCounter = holder.getFreeConnectionsCounter();
             this.holder = holder;
         }
@@ -62,6 +64,7 @@ public class IdleConnectionWatcher {
     private final ScheduledFuture<?> monitorFuture;
 
     public IdleConnectionWatcher(EventLoopGroup group, MasterSlaveServersConfig config) {
+        // 按照空闲连接超时时间作为检测的时间间隔
         monitorFuture = group.scheduleWithFixedDelay(() -> {
             long currTime = System.nanoTime();
             for (Entry entry : entries.values().stream().flatMap(m -> m.stream()).collect(Collectors.toList())) {
@@ -92,6 +95,13 @@ public class IdleConnectionWatcher {
     }
 
     private boolean validateAmount(Entry entry) {
+        /*
+            1. freeConnectionsCounter 表示空闲的连接数量，这部分数量表示的连接可能从来没有创建过，也可能在freeConnections中
+            2. entry.maximumAmount - entry.freeConnectionsCounter.getCounter() = 活跃连接的数量
+            3. entry.connections.size() = freeConnections
+            4. 为什么不只计算freeConnections的数量呢？因为需要判断当前创建的线程是否超过了minimumAmount，如果超过了需要进行空闲连接的移除
+            5. 为什么不使用allConnections.size计算呢？可能的考虑是并发性能，因为计算queue的数量需要遍历，性能较差
+         */
         return entry.maximumAmount - entry.freeConnectionsCounter.getCounter() + entry.connections.size() > entry.minimumAmount;
     }
 

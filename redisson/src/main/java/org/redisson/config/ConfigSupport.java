@@ -213,6 +213,7 @@ public class ConfigSupport {
             throw new IllegalArgumentException("server(s) address(es) not defined!");
         }
         if (!configCopy.isLazyInitialization()) {
+            // 非延迟初始化，进行连接redis
             cm.connect();
         }
         return cm;

@@ -236,6 +236,11 @@ public final class ServiceManager {
             }
         });
 
+        /*
+            初始化定时器
+            1. 时间轮
+            2. 空闲连接检测
+         */
         initTimer();
     }
 

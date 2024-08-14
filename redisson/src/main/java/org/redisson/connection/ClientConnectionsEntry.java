@@ -33,7 +33,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 
+ * 客户端连接入口 <br/>
+ * 1. 维护一个客户端对应的多个连接 <br/>
+ * 2. 维护连接数量 <br/>
+ *
  * @author Nikita Koksharov
  *
  */
@@ -41,6 +44,9 @@ public class ClientConnectionsEntry {
 
     final Logger log = LoggerFactory.getLogger(getClass());
 
+    /*
+        连接 holder，维护一个client下的所有连接
+     */
     private final ConnectionsHolder<RedisConnection> connectionsHolder;
 
     private final ConnectionsHolder<RedisPubSubConnection> pubSubConnectionsHolder;
@@ -77,6 +83,7 @@ public class ClientConnectionsEntry {
             idleConnectionWatcher.add(this, config.getSubscriptionConnectionMinimumIdleSize(),
                                                 config.getSubscriptionConnectionPoolSize(), pubSubConnectionsHolder);
         }
+        // 空闲连接检测
         idleConnectionWatcher.add(this, poolMinSize, poolMaxSize, connectionsHolder);
 
         this.trackedConnectionsHolder = new TrackedConnectionsHolder(connectionsHolder);

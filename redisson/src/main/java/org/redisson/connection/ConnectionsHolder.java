@@ -1,12 +1,12 @@
 /**
  * Copyright (c) 2013-2024 Nikita Koksharov
- *
+ * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -31,16 +31,30 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Function;
 
 /**
- * 
  * @author Nikita Koksharov
- *
  */
 public class ConnectionsHolder<T extends RedisConnection> {
 
     final Logger log = LoggerFactory.getLogger(getClass());
 
+    /*
+        所有连接
+     */
     private final Queue<T> allConnections = new ConcurrentLinkedQueue<>();
+    /*
+        空闲的连接
+    */
     private final Queue<T> freeConnections = new ConcurrentLinkedQueue<>();
+    /*
+        空闲连接数量
+        1. 初始化是maxPollSize，表示当前空闲连接数量是连接池最大数量
+        2. 空闲连接数量不代表所有连接都已经初始化了，只是一个数量概念，具体初始化是延迟的
+        3. 当有活跃连接的时候，这个值会减少 (比如在acquireConnection的时候这个连接数量会减少)
+        4. 当需要归还连接的时候，这个值会增加
+        5. 这里补充下获取连接的行为，会先将此值减少，然后从freeConnections中获取，如果获取不到就创建一个连接并放到allConnections中；归还连接的时候会将此值增加，并将连接添加到freeConnections中
+        6. 综上: freeConnectionsCounter 表示当前空闲的连接数量，只要这个数量大于0证明可以拿到连接，至于是从freeConnections中获取还是创建一个新的连接具体看情况
+                freeConnectionsCounter 表示空闲的连接数量，这部分数量表示的连接可能从来没有创建过，也可能在freeConnections中
+     */
     private final AsyncSemaphore freeConnectionsCounter;
 
     private final RedisClient client;
@@ -54,6 +68,7 @@ public class ConnectionsHolder<T extends RedisConnection> {
     public ConnectionsHolder(RedisClient client, int poolMaxSize,
                              Function<RedisClient, CompletionStage<T>> connectionCallback,
                              ServiceManager serviceManager, boolean changeUsage) {
+        // 空闲连接counter，以最大连接数量作为Semaphore的限制，以netty线程池作为异步线程池
         this.freeConnectionsCounter = new AsyncSemaphore(poolMaxSize, serviceManager.getGroup());
         this.client = client;
         this.connectionCallback = connectionCallback;
@@ -79,7 +94,7 @@ public class ConnectionsHolder<T extends RedisConnection> {
     protected CompletableFuture<Void> acquireConnection() {
         return freeConnectionsCounter.acquire();
     }
-    
+
     private void releaseConnection() {
         freeConnectionsCounter.release();
     }
@@ -219,12 +234,16 @@ public class ConnectionsHolder<T extends RedisConnection> {
             return;
         }
 
+        // 从空闲连接队列中获取
         T conn = pollConnection(command);
         if (conn != null) {
             connectedSuccessful(promise, conn);
             return;
         }
 
+        // 新创建一个连接
+        // 注意这个连接只放到allConnection中，因为这个连接是需要使用的，不是空闲的连接
+        // 同时因为这个连接需要使用，所以freeConnectionsCounter对应的空闲连接数量会减少(因为在使用中)
         createConnection(promise);
     }
 

@@ -52,6 +52,9 @@ public class MasterSlaveConnectionManager implements ConnectionManager {
 
     protected MasterSlaveServersConfig config;
 
+    /*
+        MasterSlaveEntry 维护了结点与连接池
+     */
     private MasterSlaveEntry masterSlaveEntry;
 
     protected final PublishSubscribeService subscribeService;

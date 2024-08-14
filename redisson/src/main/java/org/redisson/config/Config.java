@@ -57,6 +57,9 @@ public class Config {
 
     private int threads = 16;
 
+    /**
+     * 默认netty线程数量为32个
+     */
     private int nettyThreads = 32;
 
     private Executor nettyExecutor;
